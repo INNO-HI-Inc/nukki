@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Nukki — 누끼 + 배경</title>
+<meta name="description" content="브라우저에서 바로 배경 제거. 업로드한 이미지는 서버로 전송되지 않습니다." />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div id="app">
+  <header class="nav">
+    <div class="brand"><span class="logo">✂</span><b>Nukki</b><span class="sub">누끼 + 배경</span></div>
+    <div class="nav-r">
+      <span class="engine" id="engine">엔진 확인 중…</span>
+      <button id="newImg" class="ghost hidden">새 이미지</button>
+      <button id="download" class="dl" disabled>다운로드</button>
+    </div>
+  </header>
+
+  <main class="work">
+    <section class="canvaswrap">
+      <div id="drop" class="drop">
+        <input type="file" id="file" accept="image/*" hidden />
+        <div class="drop-in">
+          <div class="drop-ic">↑</div>
+          <p><b>이미지를 드래그</b>하거나 클릭</p>
+          <small>⌘V 붙여넣기 · PNG · JPG · WEBP · 100% 브라우저 처리</small>
+          <div class="samples" id="samples"></div>
+        </div>
+      </div>
+
+      <div id="shot" class="shot hidden">
+        <button id="cmp" class="cmp" title="누르고 있으면 원본">원본</button>
+        <div class="frame" id="frame">
+          <img id="subject" class="subject" alt="" />
+        </div>
+      </div>
+
+      <div id="busy" class="busy hidden">
+        <div class="spinner"></div>
+        <p id="busyMsg">준비 중…</p>
+        <div class="progress hidden" id="progress"><div class="bar" id="bar"></div></div>
+      </div>
+    </section>
+
+    <aside class="panel" id="panel">
+      <div class="group">
+        <h3>배경</h3>
+        <div class="swatches" id="swatches"></div>
+        <label class="customrow">
+          <span class="dot" id="customDot"></span> 커스텀 색
+          <input type="color" id="customColor" value="#ffd6e7" />
+        </label>
+      </div>
+
+      <div class="group">
+        <div class="slider"><span>여백 <em id="padVal">12%</em></span>
+          <input type="range" id="pad" min="0" max="42" step="1" value="12" /></div>
+        <div class="slider"><span>그림자 <em id="shVal">45</em></span>
+          <input type="range" id="shadow" min="0" max="100" step="1" value="45" /></div>
+        <div class="slider"><span>둥글기 <em id="rdVal">8%</em></span>
+          <input type="range" id="round" min="0" max="50" step="1" value="8" /></div>
+        <div class="slider sm"><span>엣지 부드럽게 <em id="featherVal">0</em>px</span>
+          <input type="range" id="feather" min="0" max="6" step="0.5" value="0" /></div>
+      </div>
+
+      <div class="note">
+        🔒 업로드한 이미지는 <b>서버로 전송되지 않습니다</b>. 누끼 AI(BRIA RMBG)가
+        브라우저 안에서 직접 실행돼요. 첫 실행 시 모델(~44MB)을 한 번 받아둡니다.
+      </div>
+
+      <div class="stats" id="stats"></div>
+    </aside>
+  </main>
+</div>
+<script type="module" src="app.js"></script>
+</body>
+</html>
