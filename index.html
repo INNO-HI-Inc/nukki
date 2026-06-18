@@ -65,9 +65,19 @@
           <input type="range" id="feather" min="0" max="6" step="0.5" value="0" /></div>
       </div>
 
-      <div class="note">
-        🔒 업로드한 이미지는 <b>서버로 전송되지 않습니다</b>. 누끼 AI(BRIA RMBG)가
-        브라우저 안에서 직접 실행돼요. 첫 실행 시 모델(~44MB)을 한 번 받아둡니다.
+      <div class="group">
+        <h3>처리 속도</h3>
+        <div class="seg" id="res">
+          <button data-r="512">빠름</button>
+          <button data-r="768" class="on">보통</button>
+          <button data-r="1024">정밀</button>
+        </div>
+        <p class="subhint" id="resHint">해상도 ↓ = 빠름, ↑ = 경계 정밀</p>
+      </div>
+
+      <div class="note" id="engineNote">
+        🔒 이미지는 <b>서버로 전송되지 않습니다</b> — 브라우저에서 직접 처리.
+        첫 실행 시 모델(~44MB)을 한 번 받아둡니다.
       </div>
 
       <div class="stats" id="stats"></div>

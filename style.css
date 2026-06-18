@@ -137,5 +137,7 @@ input[type=range]{width:100%;accent-color:var(--ink);height:4px;cursor:pointer}
 .note{font-size:11px;color:var(--mut);line-height:1.55;background:var(--chip);
   border:1px solid var(--line);border-radius:10px;padding:10px 12px}
 .note b{color:var(--ink2)}
+.subhint{font-size:11px;color:var(--mut);margin-top:8px;line-height:1.5}
+.note.warn{background:#fff7ed;border-color:#fed7aa;color:#9a5b00}
 
 @media(max-width:860px){.work{grid-template-columns:1fr}.panel{display:none}}

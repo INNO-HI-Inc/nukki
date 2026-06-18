@@ -24,17 +24,38 @@ const cssFor = (b) =>
 
 const state = {
   file: null, origUrl: null, resultUrl: null, cutCanvas: null,
-  bg: BGS[0], pad: 12, shadow: 45, round: 8, feather: 0,
+  bg: BGS[0], pad: 12, shadow: 45, round: 8, feather: 0, res: 768,
 };
 
-/* ---------- 엔진 (WebGPU / WASM) ---------- */
-let model = null, processor = null, device = (navigator.gpu ? "webgpu" : "wasm");
+/* ---------- 엔진 (WebGPU+fp16 / WASM+q8) ---------- */
+let model = null, device = null, dtype = null;
+const procCache = new Map();
 function setEngine() {
   const e = $("#engine");
-  e.textContent = device === "webgpu" ? "⚡ WebGPU" : "WASM (CPU)";
+  if (!device) { e.textContent = navigator.gpu ? "⚡ WebGPU 준비" : "WASM (CPU)"; return; }
+  e.textContent = device === "webgpu" ? `⚡ WebGPU · ${dtype}` : `WASM · ${dtype}`;
   e.classList.toggle("gpu", device === "webgpu");
+  // WASM이면 WebGPU 권장 안내
+  if (device === "wasm") {
+    const n = $("#engineNote"); n.classList.add("warn");
+    n.innerHTML = "⚠️ 이 브라우저는 <b>WebGPU 미지원</b>이라 CPU로 느립니다. " +
+      "<b>Chrome·Edge(데스크톱)</b>에서 열면 GPU로 훨씬 빨라져요. (또는 '빠름' 해상도 사용)";
+  }
 }
 setEngine();
+
+function getProcessor(size) {
+  if (procCache.has(size)) return procCache.get(size);
+  const p = AutoProcessor.from_pretrained("briaai/RMBG-1.4", {
+    config: {
+      do_normalize: true, do_pad: false, do_rescale: true, do_resize: true,
+      image_mean: [0.5, 0.5, 0.5], image_std: [1, 1, 1], resample: 2,
+      rescale_factor: 1 / 255, size: { width: size, height: size },
+    },
+  });
+  procCache.set(size, p);
+  return p;
+}
 
 async function ensureModel() {
   if (model) return;
@@ -46,27 +67,37 @@ async function ensureModel() {
       $("#busyMsg").textContent = `AI 모델 받는 중… ${pct}% (처음 한 번만)`;
     }
   };
-  const load = (dev) => AutoModel.from_pretrained("briaai/RMBG-1.4",
-    { config: { model_type: "custom" }, device: dev, progress_callback: prog });
-  try {
-    model = await load(device);
-  } catch (e) {
-    device = "wasm"; setEngine();              // WebGPU 실패 → WASM 폴백
-    model = await load("wasm");
+  // 엔진 우선순위: WebGPU+fp16 → WebGPU+fp32 → WASM+q8
+  const plans = navigator.gpu
+    ? [["webgpu", "fp16"], ["webgpu", "fp32"], ["wasm", "q8"]]
+    : [["wasm", "q8"]];
+  for (const [dev, dt] of plans) {
+    try {
+      model = await AutoModel.from_pretrained("briaai/RMBG-1.4",
+        { config: { model_type: "custom" }, device: dev, dtype: dt, progress_callback: prog });
+      device = dev; dtype = dt; break;
+    } catch (e) { console.warn("engine fail:", dev, dt, e?.message || e); }
   }
-  processor = await AutoProcessor.from_pretrained("briaai/RMBG-1.4", {
-    config: {
-      do_normalize: true, do_pad: false, do_rescale: true, do_resize: true,
-      image_mean: [0.5, 0.5, 0.5], image_std: [1, 1, 1], resample: 2,
-      rescale_factor: 1 / 255, size: { width: 1024, height: 1024 },
-    },
-  });
+  if (!model) throw new Error("AI 모델을 불러오지 못했습니다");
+  setEngine();
   $("#progress").classList.add("hidden");
+  // WASM(CPU)이면 기본을 '빠름(512)'으로 (사용자가 직접 고르기 전까지)
+  if (device === "wasm" && !state._resTouched) { state.res = 512; reflectRes(); }
+
+  // 워밍업(WebGPU 셰이더 컴파일) — 첫 이미지가 느리지 않게
+  try {
+    $("#busyMsg").textContent = "엔진 준비 중…";
+    const warm = new RawImage(new Uint8ClampedArray(64 * 64 * 3).fill(127), 64, 64, 3);
+    const proc = await getProcessor(state.res);
+    const { pixel_values } = await proc(warm);
+    await model({ input: pixel_values });
+  } catch (e) { /* 워밍업 실패는 무시 */ }
 }
 
 async function cutout(blobURL) {
   const image = await RawImage.fromURL(blobURL);
-  const { pixel_values } = await processor(image);
+  const proc = await getProcessor(state.res);
+  const { pixel_values } = await proc(image);
   const { output } = await model({ input: pixel_values });
   const mask = await RawImage.fromTensor(output[0].mul(255).to("uint8")).resize(image.width, image.height);
 
@@ -142,6 +173,16 @@ $("#feather").oninput = e => {
   state.feather = +e.target.value; $("#featherVal").textContent = e.target.value;
   if (state.cutCanvas) showCut();
 };
+
+/* 처리 속도(해상도) */
+function reflectRes() {
+  $("#res").querySelectorAll("button").forEach(x =>
+    x.classList.toggle("on", +x.dataset.r === state.res));
+}
+$("#res").querySelectorAll("button").forEach(b => b.onclick = () => {
+  state.res = +b.dataset.r; state._resTouched = true; reflectRes();
+  if (state.file) process();   // 해상도 변경 → 재처리
+});
 
 /* ---------- 업로드 ---------- */
 const drop = $("#drop"), fileInput = $("#file");
